@@ -1,6 +1,6 @@
 import Reservation from "../models/Reservation.js";
 import { findBestAvailableTable } from "../services/allocationService.js";
-import { io } from "../server.js";
+import { io } from "../../server.js";
 
 /* ---------------------------------- */
 /* Create Booking                     */

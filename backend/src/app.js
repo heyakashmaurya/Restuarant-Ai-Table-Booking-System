@@ -15,7 +15,20 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import callRoutes from "./routes/callRoutes.js";
 import outboundRoutes from "./routes/outboundRoutes.js";
 
+import livekitRoutes from "./routes/livekitRoutes.js";
+
+
+
+
 const app = express();
+
+
+
+app.set("trust proxy", 1);
+console.log("Trust Proxy:", app.get("trust proxy"));
+
+
+
 
 /* ---------------------------------- */
 /* Security Middleware                */
@@ -31,13 +44,13 @@ app.use(
 
 app.use(xss());
 
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    message: "Too many requests. Please try again later."
-  })
-);
+// app.use(
+//   rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 200,
+//     message: "Too many requests. Please try again later."
+//   })
+// );
 
 /* ---------------------------------- */
 /* Core Middleware                    */
@@ -58,6 +71,8 @@ app.get("/", (req, res) => {
   });
 });
 
+
+
 /* ---------------------------------- */
 /* API Placeholder Routes             */
 /* ---------------------------------- */
@@ -74,6 +89,13 @@ app.use("/api/outbound", outboundRoutes);
 app.use("/api/analytics", (req, res) => {
   res.json({ message: "Analytics route ready" });
 });
+
+
+app.use(
+  "/api/livekit",
+  livekitRoutes
+);
+
 
 /* ---------------------------------- */
 /* 404 Handler                        */

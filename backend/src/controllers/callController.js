@@ -1,7 +1,9 @@
 
 
 import twilio from "twilio";
-import { processConversation } from "../services/geminiService.js";
+// import { processConversation } from "../services/geminiService.js";
+import { processConversation }
+  from "../services/deepseekService.js";
 import Reservation from "../models/Reservation.js";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
@@ -23,14 +25,28 @@ const getSession = (caller) => {
   }
   return sessions.get(caller);
 };
-
 const updateSession = (session, data) => {
+
   for (const key in data) {
-    if (data[key]) {
+
+    if (
+      data[key] !== null &&
+      data[key] !== undefined
+    ) {
       session[key] = data[key];
     }
+
   }
+
 };
+
+// const updateSession = (session, data) => {
+//   for (const key in data) {
+//     if (data[key]) {
+//       session[key] = data[key];
+//     }
+//   }
+// };
 
 const clearSession = (caller) => {
   sessions.delete(caller);
@@ -43,7 +59,12 @@ export const incomingCall = (req, res) => {
   const twiml = new VoiceResponse();
 
   twiml.say(
-    { voice: "alice" },
+    {
+      // voice: "alice"
+      voice: "Polly.Joanna",
+      language: "en-US",
+    },
+
     "Hello, thanks for calling. How can I help you today?"
   );
 
@@ -111,6 +132,14 @@ export const processCall = async (req, res) => {
     /* AI Processing                      */
     /* ---------------------------------- */
     const result = await processConversation(speechText, session);
+    // const result = {
+    //   intent: "booking",
+    //   guests: 2,
+    //   date: "2026-05-20",
+    //   time: "7 PM",
+    //   name: "Akash",
+    //   reply: "Sure, booking for 2 people. What time would you like?"
+    // };
 
     updateSession(session, result);
 
@@ -120,10 +149,11 @@ export const processCall = async (req, res) => {
     /* Ask Confirmation                   */
     /* ---------------------------------- */
     if (
-      session.intent === "booking" &&
+      session.intent === "booking | booking_ready | inquiry | cancel" &&
       session.guests &&
       session.date &&
       session.time &&
+      session.name &&
       !session.confirmed
     ) {
       session.awaitingConfirmation = true;
@@ -135,7 +165,7 @@ export const processCall = async (req, res) => {
     /* Final Booking                      */
     /* ---------------------------------- */
     if (
-      session.intent === "booking" &&
+      session.intent === "booking | booking_ready | inquiry | cancel" &&
       session.guests &&
       session.date &&
       session.time &&
@@ -149,9 +179,25 @@ export const processCall = async (req, res) => {
         time: session.time
       });
 
-      message = `Perfect! Your table for ${session.guests} people on ${session.date} at ${session.time} is confirmed. We look forward to serving you!`;
+      // message = `Perfect! Your table for ${session.guests} people on ${session.date} at ${session.time} is confirmed. We look forward to serving you!`;
+
+      // clearSession(caller);
+
+      message = `Perfect! Your table for ${session.guests} people on ${session.date} at ${session.time} is confirmed. We look forward to serving you. Goodbye!`;
+
+      twiml.say(
+        {
+          voice: "Polly.Joanna",
+          language: "en-US"
+        },
+        message
+      );
+
+      twiml.hangup();
 
       clearSession(caller);
+
+      return res.type("text/xml").send(twiml.toString());
     }
 
     /* ---------------------------------- */

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
+    "agent": "lk agent dev src/agents/restaurantAgent.js",
     "start": "node server.js"
   },
   "keywords": [
@@ -16,11 +17,17 @@
     "twilio",
     "gemini"
   ],
-  "author": "Your Name",
+  "author": "Akash Maurya",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@livekit/agents": "^1.5.0",
+    "@livekit/agents-plugin-deepgram": "^1.5.0",
+    "@livekit/agents-plugin-openai": "^1.5.0",
+    "@livekit/agents-plugin-silero": "^1.5.0",
+    "@livekit/rtc-node": "^0.13.30",
+    "axios": "^1.18.1",
     "bcryptjs": "^2.4.3",
+    "chrono-node": "^2.9.1",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -30,17 +37,25 @@
     "helmet": "^7.1.0",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
+    "livekit-client": "^2.20.0",
+    "livekit-server-sdk": "^2.16.0",
     "mongoose": "^8.5.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.6",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^9.0.3",
+    "onnxruntime-node": "^1.27.0",
+    "openai": "^6.45.0",
+    "sarvamai": "^1.1.7",
     "socket.io": "^4.7.5",
     "twilio": "^5.2.2",
     "validator": "^13.12.0",
+    "wav": "^1.0.2",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
+    "clinic": "^9.1.0",
     "nodemon": "^3.1.4"
   }
 }

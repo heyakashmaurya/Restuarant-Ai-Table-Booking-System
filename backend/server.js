@@ -1,9 +1,9 @@
 import http from "http";
 import { Server } from "socket.io";
 
-import app from "./app.js";
-import connectDB from "./config/db.js";
-import env from "./config/env.js";
+import app from "./src/app.js";
+// import connectDB from "./config/db.js";
+import env from "./src/config/env.js";
 
 /* ---------------------------------- */
 /* Create HTTP Server                 */
@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
 /* ---------------------------------- */
 const startServer = async () => {
   try {
-    await connectDB();
+    // await connectDB();
 
     server.listen(env.port, () => {
       console.log(`Server running on port ${env.port}`);
