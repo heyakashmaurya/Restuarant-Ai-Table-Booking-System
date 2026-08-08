@@ -12,11 +12,18 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-import { createDeepgramSTT } from "../services/deepgramSTT.js";
+import { createDeepgramSTT } from "../services/voice/deepgramSTT.js";
 // import { LiveKitSarvamTTS } from "../services/livekitSarvamTTS.js";
 
-import { deepseekLLM } from "../services/livekitDeepseek.js";
-import { elevenlabsTTS } from "../services/livekitElevenLabsTTS.js";
+import { deepseekLLM } from "../services/voice/livekitDeepseek.js";
+import { elevenlabsTTS } from "../services/voice/livekitElevenLabsTTS.js";
+// import { inference } from "@livekit/agents";
+
+// const vad = new inference.VAD({
+//     model: "silero",
+//     minSpeechDuration: 0.05,
+//     minSilenceDuration: 0.3,
+// });
 
 console.log(
     "Deepgram Key Loaded:",
@@ -80,6 +87,7 @@ Assistant: Sure. How many guests will be joining you?
             stt,
             llm: deepseekLLM,
             tts,
+            // vad
         });
 
         console.log("Starting Agent Session...");
@@ -93,7 +101,17 @@ Assistant: Sure. How many guests will be joining you?
             // participant: participant // Tells the session who to listen to and speak with!
         });
 
-        console.log("✅ Agent Session Started");
+        ctx.room.on("participantDisconnected", async (participant) => {
+    console.log(`📞 ${participant.identity} disconnected`);
+
+    try {
+        await session.close();
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+        console.log("✅ Agent Session Started");     
 
         /*
             🔥 TRIGGER GREETING MANDATORY FIX:

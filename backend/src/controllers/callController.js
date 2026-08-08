@@ -3,8 +3,8 @@
 import twilio from "twilio";
 // import { processConversation } from "../services/geminiService.js";
 import { processConversation }
-  from "../services/deepseekService.js";
-import Reservation from "../models/Reservation.js";
+  from "../services/voice/deepseekService.js";
+// import Reservation from "../models/Reservation.js";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 

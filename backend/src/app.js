@@ -9,9 +9,11 @@ import xss from "xss-clean";
 
 import env from "./config/env.js";
 
+import errorHandler from "./middleware/errorHandler.js";
+
 import authRoutes from "./routes/authRoutes.js";
-import tableRoutes from "./routes/tableRoutes.js";
-import bookingRoutes from "./routes/bookingRoutes.js";
+import tableRoutes from "./routes/table.routes.js";
+// import bookingRoutes from "./routes/booking.routes.js";
 import callRoutes from "./routes/callRoutes.js";
 import outboundRoutes from "./routes/outboundRoutes.js";
 
@@ -76,11 +78,22 @@ app.get("/", (req, res) => {
 /* ---------------------------------- */
 /* API Placeholder Routes             */
 /* ---------------------------------- */
+
 app.use("/api/auth", authRoutes);
 
-app.use("/api/bookings", bookingRoutes);
-
 app.use("/api/tables", tableRoutes);
+
+// app.use("/api/customers", customerRoutes);
+
+// app.use("/api/bookings", bookingRoutes);
+
+app.use(errorHandler);
+
+
+
+
+
+
 
 app.use("/api/call", callRoutes);
 

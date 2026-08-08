@@ -1,91 +1,148 @@
-import User from "../models/User.js";
-import { generateToken } from "../utils/jwt.js";
+import authService from "../services//auth/auth.service.js";
 
-export const registerUser = async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
+/*
+|--------------------------------------------------------------------------
+| Register
+|--------------------------------------------------------------------------
+*/
 
-    const exists = await User.findOne({ email });
+export const register = async (req, res, next) => {
 
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already exists"
-      });
+    try {
+
+        const result = await authService.register(req.body);
+
+        return res.status(201).json({
+            success: true,
+            message: "Account created successfully.",
+            data: result,
+        });
+
+    } catch (error) {
+
+        next(error);
+
     }
 
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role
-    });
-
-    const token = generateToken({ id: user._id });
-
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
 };
 
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+/*
+|--------------------------------------------------------------------------
+| Login
+|--------------------------------------------------------------------------
+*/
 
-    const user = await User.findOne({ email }).select("+password");
+export const login = async (req, res, next) => {
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials"
-      });
+    try {
+
+        const { email, password } = req.body;
+
+        const result = await authService.login(
+            email,
+            password
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful.",
+            data: result,
+        });
+
+    } catch (error) {
+
+        next(error);
+
     }
 
-    const isMatch = await user.comparePassword(password);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials"
-      });
-    }
-
-    const token = generateToken({ id: user._id });
-
-    res.status(200).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
 };
 
-export const getMe = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: req.user
-  });
+/*
+|--------------------------------------------------------------------------
+| Get Profile
+|--------------------------------------------------------------------------
+*/
+
+export const getProfile = async (req, res, next) => {
+
+    try {
+
+        const user = await authService.getProfile(
+            req.user.id
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: user,
+        });
+
+    } catch (error) {
+
+        next(error);
+
+    }
+
+};
+
+/*
+|--------------------------------------------------------------------------
+| Update Profile
+|--------------------------------------------------------------------------
+*/
+
+export const updateProfile = async (req, res, next) => {
+
+    try {
+
+        const user = await authService.updateProfile(
+            req.user.id,
+            req.body
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully.",
+            data: user,
+        });
+
+    } catch (error) {
+
+        next(error);
+
+    }
+
+};
+
+/*
+|--------------------------------------------------------------------------
+| Change Password
+|--------------------------------------------------------------------------
+*/
+
+export const changePassword = async (req, res, next) => {
+
+    try {
+
+        const {
+            currentPassword,
+            newPassword,
+        } = req.body;
+
+        await authService.changePassword(
+            req.user.id,
+            currentPassword,
+            newPassword
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully.",
+        });
+
+    } catch (error) {
+
+        next(error);
+
+    }
+
 };

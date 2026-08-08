@@ -1,8 +1,41 @@
 import jwt from "jsonwebtoken";
-import env from "../config/env.js";
+import dotenv from "dotenv";  
+dotenv.config();
 
-export const generateToken = (payload) => {
-  return jwt.sign(payload, env.jwtSecret, {
-    expiresIn: env.jwtExpiresIn
-  });
+/*
+|--------------------------------------------------------------------------
+| Generate Access Token
+|--------------------------------------------------------------------------
+*/
+
+export const generateAccessToken = (user) => {
+
+    return jwt.sign(
+        {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+            restaurantId: user.restaurantId,
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+        }
+    );
+
+};
+
+/*
+|--------------------------------------------------------------------------
+| Verify Access Token
+|--------------------------------------------------------------------------
+*/
+
+export const verifyAccessToken = (token) => {
+
+    return jwt.verify(
+        token,
+        process.env.JWT_SECRET
+    );
+
 };

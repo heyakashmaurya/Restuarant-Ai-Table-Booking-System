@@ -3,7 +3,7 @@ import express from "express";
 import {
 createLiveKitToken
 }
-from "../services/livekitService.js";
+from "../services/voice/livekitService.js";
 
 
 const router = express.Router();
