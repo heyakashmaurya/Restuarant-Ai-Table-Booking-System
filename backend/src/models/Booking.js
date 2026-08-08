@@ -270,9 +270,9 @@ bookingSchema.index({
     bookingDate: 1,
 });
 
-bookingSchema.index({
-    bookingNumber: 1,
-});
+// bookingSchema.index({
+//     bookingNumber: 1,
+// });
 
 export default mongoose.model("Booking", bookingSchema);
 

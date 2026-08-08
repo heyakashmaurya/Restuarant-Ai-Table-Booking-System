@@ -27,7 +27,7 @@ import { findBooking } from "./findBooking.js";
 import { getBooking } from "./getBooking.js";
 import { updateBooking } from "./updateBooking.js";
 import { cancelBooking } from "./cancelBooking.js";
-
+import { listBookings } from "./listBookings.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -84,6 +84,14 @@ export const bookingService = {
     */
 
     cancelBooking,
+
+    /*
+|--------------------------------------------------------------------------
+| List Bookings
+|--------------------------------------------------------------------------
+*/
+
+    listBookings,
 
 };
 

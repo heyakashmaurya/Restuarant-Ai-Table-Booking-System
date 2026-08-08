@@ -17,3 +17,5 @@ export { getBooking } from "./getBooking.js";
 export { updateBooking } from "./updateBooking.js";
 
 export { cancelBooking } from "./cancelBooking.js";
+
+export { listBookings } from "./listBookings.js";

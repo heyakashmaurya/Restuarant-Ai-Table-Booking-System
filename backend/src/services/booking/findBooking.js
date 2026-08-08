@@ -67,9 +67,9 @@ export const findBooking = async ({
 
                 status: {
                     $in: [
-                        "Pending",
-                        "Confirmed",
-                        "Seated",
+                        "pending",
+                        "confirmed",
+                        "seated",
                     ],
                 },
 
