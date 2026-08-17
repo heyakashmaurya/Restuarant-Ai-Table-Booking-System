@@ -1,4 +1,7 @@
 
+import mongoose from "mongoose";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 
 import {
     WorkerOptions,
@@ -7,27 +10,16 @@ import {
     voice,
 } from "@livekit/agents";
 
-import { llm } from "@livekit/agents";
-
+import connectDB from "../config/db.js";
 import { livekitRestaurantTools } from "../tools/livekitTools.js";
 
-import { fileURLToPath } from "node:url";
-import dotenv from "dotenv";
-
-dotenv.config();
-
 import { createDeepgramSTT } from "../services/voice/deepgramSTT.js";
-// import { LiveKitSarvamTTS } from "../services/livekitSarvamTTS.js";
-
 import { deepseekLLM } from "../services/voice/livekitDeepseek.js";
 import { elevenlabsTTS } from "../services/voice/livekitElevenLabsTTS.js";
-// import { inference } from "@livekit/agents";
 
-// const vad = new inference.VAD({
-//     model: "silero",
-//     minSpeechDuration: 0.05,
-//     minSilenceDuration: 0.3,
-// });
+import getRestaurantAgentPrompt from "../prompts/restaurantAgentPrompt.js";
+
+dotenv.config();
 
 console.log(
     "Deepgram Key Loaded:",
@@ -35,169 +27,83 @@ console.log(
 );
 
 export default defineAgent({
-
     entry: async (ctx) => {
+        await connectDB();
 
-        console.log("🚀 Agent job started");
+        console.log("✅ MongoDB connected");
+        console.log(
+            "MongoDB readyState:",
+            mongoose.connection.readyState
+        );
 
-        /*
-            Connect Agent to the room
-        */
         await ctx.connect();
 
         console.log(
-            "✅ Connected to room:", 
+            "✅ Connected to room:",
             ctx.room.name
         );
 
-        /*
-            STT, TTS and LLM Setup
-        */
         const stt = createDeepgramSTT();
-        // const tts = new LiveKitSarvamTTS();
         const tts = elevenlabsTTS();
 
-        console.log("✅ STT & TTS Pipeline initialized");
+        const agent = new voice.Agent({
+            instructions: getRestaurantAgentPrompt(),
+            tools: livekitRestaurantTools,
+        });
 
-        /*
-            Agent Brain Instructions
-        */
+        console.log("========== LLM DEBUG ==========");
+        console.log(
+            "DeepSeek key exists:",
+            !!process.env.DEEPSEEK_API_KEY
+        );
+        console.log(
+            "DeepSeek key prefix:",
+            process.env.DEEPSEEK_API_KEY?.slice(0, 8)
+        );
+        console.log(
+            "DeepSeek LLM exists:",
+            !!deepseekLLM
+        );
+        console.log("================================");
 
-            const agent = new voice.Agent({
-    instructions: `
-You are an AI restaurant receptionist.
-
-Your job is to help customers with restaurant bookings.
-
-Rules:
-
-1. Start every conversation with:
-   "Welcome to our restaurant. How can I help you today?"
-
-2. Collect:
-   - Customer name
-   - Number of guests
-   - Date
-   - Time
-
-3. Ask only one question at a time.
-
-4. Keep replies short and natural.
-
-5. Confirm booking details before final confirmation.
-
-6. Use the available booking tools whenever you need to:
-   - check table availability
-   - create a booking
-   - retrieve a booking
-   - list bookings
-   - update a booking
-   - cancel a booking
-
-7. Never claim that a booking was created, updated, retrieved, or cancelled unless the corresponding tool succeeds.
-
-8. When a tool returns an error, explain the problem naturally to the customer and do not pretend the operation succeeded.
-
-Example:
-
-Customer:
-I want a table tomorrow at 7 PM.
-
-Assistant:
-Sure. How many guests will be joining you?
-    `,
-
-    tools: livekitRestaurantTools,
-});
-//         const agent = new voice.Agent({
-//             instructions: `
-// You are an AI restaurant receptionist.
-// Your job is to book restaurant tables.
-
-// Rules:
-// 1. Start every conversation with: "Welcome to our restaurant. How can I help you today?"
-// 2. Collect:
-// - Customer name
-// - Number of guests
-// - Date
-// - Time
-// 3. Ask only one question at a time.
-// 4. Keep replies short and natural.
-// 5. Confirm booking details before final confirmation.
-
-// Example:
-// Customer: I want a table tomorrow at 7 PM.
-// Assistant: Sure. How many guests will be joining you?
-//             `
-//         });
-
-        /*
-            Voice Pipeline Session Configuration
-        */
         const session = new voice.AgentSession({
             stt,
             llm: deepseekLLM,
             tts,
-            // vad
         });
-
-        console.log("Starting Agent Session...");
-
-        // Wait for any human participant to match up against or get the first connected user
-        const participant = ctx.room.remoteParticipants.values().next().value;
 
         await session.start({
             agent,
             room: ctx.room,
-            // participant: participant // Tells the session who to listen to and speak with!
         });
 
-        ctx.room.on("participantDisconnected", async (participant) => {
-    console.log(`📞 ${participant.identity} disconnected`);
+        console.log("✅ Agent Session Started");
 
-    try {
-        await session.close();
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-        console.log("✅ Agent Session Started");     
-
-        /*
-            🔥 TRIGGER GREETING MANDATORY FIX:
-            Since the agent is connected, force it to speak the welcome message immediately!
-        */
         setTimeout(async () => {
             try {
-                console.log("🗣️ Triggering initial agent welcome greeting...");
-                await session.say("Welcome to our restaurant. How can I help you today?");
+                await session.say(
+                    "Welcome to our restaurant. How can I help you today?"
+                );
             } catch (err) {
-                console.error("❌ Failed to say greeting phrase:", err);
+                console.error("Greeting failed:", err);
             }
-        }, 1500);
+        }, 1000);
 
-        /*
-            Debug local tracks to ensure publishing is active
-        */
-        setTimeout(() => {
-            console.log("Published tracks count:", ctx.room.localParticipant.trackPublications.size);
-            for (const [sid, publication] of ctx.room.localParticipant.trackPublications) {
-                console.log({
-                    sid,
-                    kind: publication.kind,
-                    name: publication.name,
-                    subscribed: publication.isSubscribed
-                });
+        ctx.room.on(
+            "participantDisconnected",
+            async (participant) => {
+                console.log(
+                    `📞 ${participant.identity} disconnected`
+                );
+
+                try {
+                    await session.close();
+                } catch (err) {
+                    console.error(err);
+                }
             }
-        }, 3000);
-
-        /*
-            Keep worker alive
-        */
-        await new Promise(() => {});
+        );
     },
-
 });
 
 cli.runApp(
@@ -211,6 +117,12 @@ cli.runApp(
 );
 
 
+
+
+// import mongoose from "mongoose";
+// import { fileURLToPath } from "node:url";
+// import dotenv from "dotenv";
+
 // import {
 //     WorkerOptions,
 //     cli,
@@ -218,601 +130,349 @@ cli.runApp(
 //     voice,
 // } from "@livekit/agents";
 
-// import { fileURLToPath } from "node:url";
-// import dotenv from "dotenv";
+// import connectDB from "../config/db.js";
+// import { livekitRestaurantTools } from "../tools/livekitTools.js";
+
+// import { createDeepgramSTT } from "../services/voice/deepgramSTT.js";
+// import { deepseekLLM } from "../services/voice/livekitDeepseek.js";
+// import { elevenlabsTTS } from "../services/voice/livekitElevenLabsTTS.js";
+
+// import getRestaurantAgentPrompt from "../prompts/restaurantAgentPrompt.js";
 
 // dotenv.config();
-
-
-// import { createDeepgramSTT } from "../services/deepgramSTT.js";
-// import { LiveKitSarvamTTS } from "../services/livekitSarvamTTS.js";
-// import { deepseekLLM } from "../services/livekitDeepseek.js";
-
-
 
 // console.log(
 //     "Deepgram Key Loaded:",
 //     !!process.env.DEEPGRAM_API_KEY
 // );
 
+// export default defineAgent({
+//     entry: async (ctx) => {
+//         await connectDB();
 
+//         console.log("✅ MongoDB connected");
+//         console.log(
+//             "MongoDB readyState:",
+//             mongoose.connection.readyState
+//         );
+
+//         await ctx.connect();
+
+//         console.log(
+//             "✅ Connected to room:",
+//             ctx.room.name
+//         );
+
+//         const stt = createDeepgramSTT();
+//         const tts = elevenlabsTTS(); 
+
+//         const agent = new voice.Agent({
+//             instructions: getRestaurantAgentPrompt,
+//             tools: livekitRestaurantTools,
+//         });
+
+//         console.log("========== LLM DEBUG ==========");
+//         console.log(
+//             "DeepSeek key exists:",
+//             !!process.env.DEEPSEEK_API_KEY
+//         );
+//         console.log(
+//             "DeepSeek key prefix:",
+//             process.env.DEEPSEEK_API_KEY?.slice(0, 8)
+//         );
+//         console.log(
+//             "DeepSeek LLM exists:",
+//             !!deepseekLLM
+//         );
+//         console.log("================================");
+//         console.log("================================");
+
+//         const session = new voice.AgentSession({
+//             stt,
+//             llm: deepseekLLM,
+//             tts,
+//         });
+
+//         await session.start({
+//             agent,
+//             room: ctx.room,
+//         });
+
+//         console.log("✅ Agent Session Started");
+
+//         setTimeout(async () => {
+//             try {
+//                 await session.say(
+//                     "Welcome to our restaurant. How can I help you today?"
+//                 );
+//             } catch (err) {
+//                 console.error(
+//                     "Greeting failed:",
+//                     err
+//                 );
+//             }
+//         }, 1000);
+
+//         ctx.room.on(
+//             "participantDisconnected",
+//             async (participant) => {
+//                 console.log(
+//                     `📞 ${participant.identity} disconnected`
+//                 );
+
+//                 try {
+//                     await session.close();
+//                 } catch (err) {
+//                     console.error(err);
+//                 }
+//             }
+//         );
+
+//         await new Promise(() => { });
+//     },
+// });
+
+// cli.runApp(
+//     new WorkerOptions({
+//         agent: fileURLToPath(import.meta.url),
+//         agentName: "restaurant-agent",
+//         wsURL: process.env.LIVEKIT_URL,
+//         apiKey: process.env.LIVEKIT_API_KEY,
+//         apiSecret: process.env.LIVEKIT_API_SECRET,
+//     })
+// );
+
+
+
+
+// import mongoose from "mongoose";
+// import connectDB from "../config/db.js";
+
+// import {
+//     WorkerOptions,
+//     cli,
+//     defineAgent,
+//     voice,
+// } from "@livekit/agents";
+
+// import { llm } from "@livekit/agents";
+
+// import { livekitRestaurantTools } from "../tools/livekitTools.js";
+// // import restaurantTools from "../tools/index.js";
+
+// import { fileURLToPath } from "node:url";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// import { createDeepgramSTT } from "../services/voice/deepgramSTT.js";
+// // import { LiveKitSarvamTTS } from "../services/livekitSarvamTTS.js";
+
+// import { deepseekLLM } from "../services/voice/livekitDeepseek.js";
+// import { elevenlabsTTS } from "../services/voice/livekitElevenLabsTTS.js";
+// // import { inference } from "@livekit/agents";
+
+// // const vad = new inference.VAD({
+// //     model: "silero",
+// //     minSpeechDuration: 0.05,
+// //     minSilenceDuration: 0.3,
+// // });
+
+// console.log(
+//     "Deepgram Key Loaded:",
+//     !!process.env.DEEPGRAM_API_KEY
+// );
 
 // export default defineAgent({
 
 //     entry: async (ctx) => {
 
+//         await connectDB();
+
+//     console.log("✅ MongoDB connected for agent");
+//     console.log("MongoDB readyState:", mongoose.connection.readyState);
+// console.log("MongoDB host:", mongoose.connection.host);
 
 //         console.log("🚀 Agent job started");
 
-
 //         /*
-//             Connect SIP participant room
+//             Connect Agent to the room
 //         */
 //         await ctx.connect();
 
-
 //         console.log(
-//             "✅ Connected to room"
+//             "✅ Connected to room:",
+//             ctx.room.name
 //         );
 
-
-
 //         /*
-//             Debug incoming SIP participant
+//             STT, TTS and LLM Setup
 //         */
-//         ctx.room.on(
-//             "participantConnected",
-//             (participant)=>{
-
-//                 console.log(
-//                     "Participant connected:",
-//                     participant.identity
-//                 );
-
-//             }
-//         );
-
-
-
-//         /*
-//             STT
-//         */
-
 //         const stt = createDeepgramSTT();
+//         // const tts = new LiveKitSarvamTTS();
+//         const tts = elevenlabsTTS();
 
-
-//         console.log(
-//             "✅ Deepgram STT initialized"
-//         );
-
-
+//         console.log("✅ STT & TTS Pipeline initialized");
 
 //         /*
-//             TTS
+//             Agent Brain Instructions
 //         */
 
-//         const tts = new LiveKitSarvamTTS();
+//             const agent = new voice.Agent({
+//   instructions: `
+// Restaurant receptionist. Start with: "Welcome to our restaurant. How can I help you today?"
 
+// Collect name, guests, date, and time. Ask one question at a time. Keep replies short and natural.
 
-//         console.log(
-//             "✅ Sarvam TTS initialized"
-//         );
+// Use the provided booking tools for availability, create, retrieve, list, update, and cancel operations. Never claim success unless the tool succeeds. Report tool errors honestly.
+// `,
+//   tools: livekitRestaurantTools,
+// });
 
+// //             const agent = new voice.Agent({
+// //     instructions: `
+// // You are an AI restaurant receptionist.
 
+// // Your job is to help customers with restaurant bookings.
+
+// // Rules:
+
+// // 1. Start every conversation with:
+// //    "Welcome to our restaurant. How can I help you today?"
+
+// // 2. Collect:
+// //    - Customer name
+// //    - Number of guests
+// //    - Date
+// //    - Time
+
+// // 3. Ask only one question at a time.
+
+// // 4. Keep replies short and natural.
+
+// // 5. Confirm booking details before final confirmation.
+
+// // 6. Use the available booking tools whenever you need to:
+// //    - check table availability
+// //    - create a booking
+// //    - retrieve a booking
+// //    - list bookings
+// //    - update a booking
+// //    - cancel a booking
+
+// // 7. Never claim that a booking was created, updated, retrieved, or cancelled unless the corresponding tool succeeds.
+
+// // 8. When a tool returns an error, explain the problem naturally to the customer and do not pretend the operation succeeded.
+
+// // Example:
+
+// // Customer:
+// // I want a table tomorrow at 7 PM.
+
+// // Assistant:
+// // Sure. How many guests will be joining you?
+// //     `,
+
+// //     tools: livekitRestaurantTools,
+// // });
+// //         const agent = new voice.Agent({
+// //             instructions: `
+// // You are an AI restaurant receptionist.
+// // Your job is to book restaurant tables.
+
+// // Rules:
+// // 1. Start every conversation with: "Welcome to our restaurant. How can I help you today?"
+// // 2. Collect:
+// // - Customer name
+// // - Number of guests
+// // - Date
+// // - Time
+// // 3. Ask only one question at a time.
+// // 4. Keep replies short and natural.
+// // 5. Confirm booking details before final confirmation.
+
+// // Example:
+// // Customer: I want a table tomorrow at 7 PM.
+// // Assistant: Sure. How many guests will be joining you?
+// //             `
+// //         });
 
 //         /*
-//             Agent Brain
+//             Voice Pipeline Session Configuration
 //         */
-
-//         const agent = new voice.Agent({
-
-//             instructions: `
-
-// You are an AI restaurant receptionist.
-
-// Your job is to book restaurant tables.
-
-// Rules:
-
-// 1. Start every conversation with:
-
-// "Welcome to our restaurant. How can I help you today?"
-
-// 2. Collect:
-
-// - Customer name
-// - Number of guests
-// - Date
-// - Time
-
-// 3. Ask only one question at a time.
-
-// 4. Keep replies short and natural.
-
-// 5. Confirm booking details before final confirmation.
-
-// Example:
-
-// Customer:
-// I want a table tomorrow at 7 PM.
-
-// Assistant:
-// Sure. How many guests will be joining you?
-
-
-//             `
-
-//         });
-
-
-
-//         /*
-//             Voice Pipeline
-
-//             Customer Voice
-//                  |
-//                 STT
-//                  |
-//              DeepSeek LLM
-//                  |
-//                 TTS
-//                  |
-//            Customer hears voice
-
-//         */
-
 //         const session = new voice.AgentSession({
-
 //             stt,
-
 //             llm: deepseekLLM,
-
 //             tts,
-
+//             // vad
 //         });
 
+//         console.log("Starting Agent Session...");
 
-
-//         console.log(
-//             "Starting Agent Session..."
-//         );
-
-
+//         // Wait for any human participant to match up against or get the first connected user
+//         const participant = ctx.room.remoteParticipants.values().next().value;
 
 //         await session.start({
-
 //             agent,
-
 //             room: ctx.room,
-
+//             // participant: participant // Tells the session who to listen to and speak with!
 //         });
 
+//         ctx.room.on("participantDisconnected", async (participant) => {
+//     console.log(`📞 ${participant.identity} disconnected`);
 
+//     try {
+//         await session.close();
+//     } catch (err) {
+//         console.error(err);
+//     }
+// });
 
-//         console.log(
-//             "✅ Agent Session Started"
-//         );
-
-
+//         console.log("✅ Agent Session Started");
 
 //         /*
-//             Debug local participant
+//             🔥 TRIGGER GREETING MANDATORY FIX:
+//             Since the agent is connected, force it to speak the welcome message immediately!
 //         */
+//         setTimeout(async () => {
+//             try {
+//                 console.log("🗣️ Triggering initial agent welcome greeting...");
+//                 await session.say("Welcome to our restaurant. How can I help you today?");
+//             } catch (err) {
+//                 console.error("❌ Failed to say greeting phrase:", err);
+//             }
+//         }, 1500);
 
-//         console.log(
-//             "Local participant:",
-//             ctx.room.localParticipant.identity
-//         );
-
-
-
-//         console.log(
-//             "Published tracks:",
-//             ctx.room.localParticipant.trackPublications.size
-//         );
-
-
-
-//         for (
-//             const [
-//                 sid,
-//                 publication
-//             ]
-//             of ctx.room.localParticipant.trackPublications
-//         ) {
-
-//             console.log({
-
-//                 sid,
-
-//                 kind:
-//                     publication.kind,
-
-//                 name:
-//                     publication.name
-
-//             });
-
-//         }
-
-
+//         /*
+//             Debug local tracks to ensure publishing is active
+//         */
+//         setTimeout(() => {
+//             console.log("Published tracks count:", ctx.room.localParticipant.trackPublications.size);
+//             for (const [sid, publication] of ctx.room.localParticipant.trackPublications) {
+//                 console.log({
+//                     sid,
+//                     kind: publication.kind,
+//                     name: publication.name,
+//                     subscribed: publication.isSubscribed
+//                 });
+//             }
+//         }, 3000);
 
 //         /*
 //             Keep worker alive
 //         */
-
-//         await new Promise(
-//             ()=>{}
-//         );
-
-
-//     },
-
-
-// });
-
-
-
-
-
-// cli.runApp(
-
-//     new WorkerOptions({
-
-//         agent:
-//             fileURLToPath(import.meta.url),
-
-
-//         agentName:
-//             "restaurant-agent",
-
-
-//         wsURL:
-//             process.env.LIVEKIT_URL,
-
-
-//         apiKey:
-//             process.env.LIVEKIT_API_KEY,
-
-
-//         apiSecret:
-//             process.env.LIVEKIT_API_SECRET,
-
-
-//     })
-
-// );
-
-
-
-// import {
-//     WorkerOptions,
-//     cli,
-//     defineAgent,
-//     voice,
-// } from "@livekit/agents";
-
-// import { fileURLToPath } from "node:url";
-
-// import dotenv from "dotenv";
-// dotenv.config();
-
-
-// import { createDeepgramSTT } from "../services/deepgramSTT.js";
-// import { LiveKitSarvamTTS } from "../services/livekitSarvamTTS.js";
-// import { deepseekLLM } from "../services/livekitDeepseek.js";
-
-// // import * as silero from "@livekit/agents-plugin-silero";
-
-// // inside entry, before session creation
-// // const vad = await silero.VAD.load({
-// //     minSpeechDuration: 0.05,
-// //     minSilenceDuration: 0.5,
-// // });
-
-
-// console.log(
-//     "Deepgram Key Loaded:",
-//     !!process.env.DEEPGRAM_API_KEY
-// );
-
-
-
-// export default defineAgent({
-
-//     entry: async (ctx) => {
-
-
-//         console.log("🚀 Agent job started");
-
-
-//         // Connect to LiveKit room
-//         await ctx.connect();
-
-
-//         console.log("✅ Connected to room");
-
-
-
-//         /*
-//             Speech To Text
-//             Customer Voice -> Text
-//         */
-//         const stt = createDeepgramSTT();
-
-
-//         console.log(
-//             "✅ Deepgram STT initialized"
-//         );
-
-
-
-//         /*
-//             Text To Speech
-//             Text -> Customer Voice
-//         */
-//         const tts = new LiveKitSarvamTTS();
-
-
-//         console.log(
-//             "✅ Sarvam TTS initialized"
-//         );
-
-
-
-//         /*
-//             Agent Brain
-//             DeepSeek decides response
-//         */
-//         const agent = new voice.Agent({
-
-//             instructions: `
-
-// You are an AI restaurant receptionist.
-
-// Your job is to help customers book restaurant tables.
-
-// Conversation rules:
-
-// 1. Start with:
-// "Welcome to our restaurant. How can I help you today?"
-
-// 2. Collect booking details:
-
-// - Customer name
-// - Number of guests
-// - Date
-// - Time
-
-// 3. Ask only one question at a time.
-
-// 4. Keep responses short and natural.
-
-// 5. Confirm all details before booking.
-
-// Example:
-
-// Customer:
-// I want a table tomorrow at 5 PM.
-
-// Assistant:
-// Sure, for how many guests?
-
-
-//             `
-
-//         });
-
-
-
-//         /*
-//             Voice Pipeline
-
-//             Customer
-//                 |
-//               STT
-//                 |
-//              DeepSeek
-//                 |
-//               TTS
-//                 |
-//             Customer
-
-//         */
-//         const session = new voice.AgentSession({
-
-//             stt,
-
-//             llm: deepseekLLM,
-
-//             tts,
-//             // vad
-
-//         });
-
-
-
-//         console.log(
-//             "Starting Agent Session..."
-//         );
-
-
-
-//         await session.start({
-
-//             agent,
-
-//             room: ctx.room,
-//             roomOutputOptions: {
-//                 audioSampleRate: 16000,
-//                 audioNumChannels: 1,
-//                 audioEnabled: true
-//             }
-
-
-
-//         });
-
-
-//         console.log(
-//             "✅ Agent Session Started"
-//         );
-
-        
-
-
-//         // /*
-//         //   IMPORTANT
-
-//         //   Keep process alive.
-//         //   Otherwise session closes
-//         //   before audio reply.
-//         // */
-
-//         await new Promise(() => { });
-
-
-//     },
-
-
-// });
-
-
-
-
-
-// cli.runApp(
-
-//     new WorkerOptions({
-
-//         agent: fileURLToPath(import.meta.url),
-
-
-//         agentName:
-//             "restaurant-agent",
-
-
-//         wsURL:
-//             process.env.LIVEKIT_URL,
-
-
-//         apiKey:
-//             process.env.LIVEKIT_API_KEY,
-
-
-//         apiSecret:
-//             process.env.LIVEKIT_API_SECRET,
-
-//     })
-
-// );
-
-
-
-// import {
-//     WorkerOptions,
-//     cli,
-//     defineAgent,
-//     voice,
-// } from "@livekit/agents";
-// // import { silero } from "@livekit/agents-plugin-silero";
-// import * as silero from "@livekit/agents-plugin-silero";
-
-// import { fileURLToPath } from "node:url";
-
-// import dotenv from "dotenv";
-// dotenv.config();
-
-
-// // import { deepseekLLM } from "../services/livekitDeepseek.js";
-
-
-// console.log(process.env.DEEPGRAM_API_KEY);
-
-// import { createDeepgramSTT } from "../services/deepgramSTT.js";
-// import { LiveKitSarvamTTS }
-//     from "../services/livekitSarvamTTS.js";
-// import { deepseekLLM } from "../services/livekitDeepseek.js";
-
-
-// export default defineAgent({
-
-//     entry: async (ctx) => {
-
-//         console.log("🚀 Agent job started");
-
-//         await ctx.connect();
-
-//         const stt = createDeepgramSTT();
-//         console.log("Deepgram STT created:", stt);
-
-//         const tts = new LiveKitSarvamTTS();
-
-//         console.log("✅ Connected to room");
-
-//         const vad = await silero.VAD.load({
-//             minSpeechDuration: 0.05,
-//             minSilenceDuration: 0.5,
-//         });
-
-//         console.log("✅ Silero VAD loaded");
-
-//         const agent = new voice.Agent({
-//             instructions: `
-//             You are a restaurant booking receptionist.
-
-//             Ask customer:
-//             - number of guests
-//             - date
-//             - time
-//             - name
-
-//             Keep answers short.
-//             `
-//         });
-
-
-
-//         const session = new voice.AgentSession({
-//             stt,
-//             llm: deepseekLLM,
-//             tts,
-//             vad,
-//         });
-
-//         console.log("Starting session");
-
-//         await session.start({
-//             agent,
-//             room: ctx.room,
-//         });
-
-//         console.log("✅ Session started");
-
-//         await session.generateReply({
-//             instructions:
-//                 "Welcome the customer and ask their booking requirement."
-//         });
-
-//         console.log("✅ Reply generated");
-
+//         await new Promise(() => {});
 //     },
 
 // });
-
 
 // cli.runApp(
 //     new WorkerOptions({
 //         agent: fileURLToPath(import.meta.url),
-
 //         agentName: "restaurant-agent",
-
 //         wsURL: process.env.LIVEKIT_URL,
-
-//         apiKey:
-//             process.env.LIVEKIT_API_KEY,
-
-//         apiSecret:
-//             process.env.LIVEKIT_API_SECRET,
+//         apiKey: process.env.LIVEKIT_API_KEY,
+//         apiSecret: process.env.LIVEKIT_API_SECRET,
 //     })
 // );
+

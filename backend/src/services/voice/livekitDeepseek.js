@@ -1,15 +1,39 @@
-import * as openai from "@livekit/agents-plugin-openai";
-import dotenv from "dotenv"
+
+import { LLM } from "@livekit/agents-plugin-openai";
+import dotenv from "dotenv";
+
 dotenv.config();
 
-// const controller = new AbortController();
-
-
-export const deepseekLLM = new openai.LLM({
-    
-    // model: "deepseek-chat",
-    model: "deepseek-v4-flash",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    baseURL: "https://api.deepseek.com",
-    // signal: controller.signal,
+export const deepseekLLM = LLM.withDeepSeek({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com", // optional, this is likely already the default
+  model: "deepseek-chat",
 });
+
+
+
+// import { LLM } from "@livekit/agents-plugin-openai";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// export const deepseekLLM = new LLM({
+//   apiKey: process.env.DEEPSEEK_API_KEY,
+//   baseURL: "https://api.deepseek.com",
+//   model: "deepseek-chat",
+// });
+
+
+
+// import * as openai from "@livekit/agents-plugin-openai";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// export const deepseekLLM = new openai.LLM({
+//   apiKey: process.env.DEEPSEEK_API_KEY,
+//   baseURL: "https://api.deepseek.com",
+//   model: "deepseek-chat",
+// });
+
+
