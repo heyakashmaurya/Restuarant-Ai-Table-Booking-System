@@ -12,9 +12,14 @@ import env from "./config/env.js";
 import errorHandler from "./middleware/errorHandler.js";
 
 import authRoutes from "./routes/authRoutes.js";
+
 import tableRoutes from "./routes/table.routes.js";
-// import bookingRoutes from "./routes/booking.routes.js";
+import bookingRoutes from "./routes/booking.routes.js";
+import analyticsRoutes
+  from "./routes/analyticsRoutes.js";
+
 import callRoutes from "./routes/callRoutes.js";
+
 import outboundRoutes from "./routes/outboundRoutes.js";
 
 import livekitRoutes from "./routes/livekitRoutes.js";
@@ -85,7 +90,12 @@ app.use("/api/tables", tableRoutes);
 
 // app.use("/api/customers", customerRoutes);
 
-// app.use("/api/bookings", bookingRoutes);
+app.use("/api/bookings", bookingRoutes);
+
+app.use(
+  "/api/analytics",
+  analyticsRoutes
+);
 
 app.use(errorHandler);
 
@@ -99,9 +109,7 @@ app.use("/api/call", callRoutes);
 
 app.use("/api/outbound", outboundRoutes);
 
-app.use("/api/analytics", (req, res) => {
-  res.json({ message: "Analytics route ready" });
-});
+
 
 
 app.use(

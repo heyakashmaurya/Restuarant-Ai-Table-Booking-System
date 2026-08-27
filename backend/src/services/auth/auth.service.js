@@ -67,70 +67,133 @@ const register = async (payload) => {
 | Login User
 |--------------------------------------------------------------------------
 */
-
 const login = async (email, password) => {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Find User
-    |--------------------------------------------------------------------------
-    */
+    if (!email || !password) {
+        throw new ApiError(
+            400,
+            "Email and password are required."
+        );
+    }
 
     const user = await User.findOne({
-        email,
+        email: email.toLowerCase().trim(),
         isDeleted: false,
     }).select("+password");
 
     if (!user) {
-        throw new ApiError(401, "Invalid email or password.");
+        throw new ApiError(
+            401,
+            "Invalid email or password."
+        );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Check Active
-    |--------------------------------------------------------------------------
-    */
 
     if (!user.isActive) {
-        throw new ApiError(403, "Account has been disabled.");
+        throw new ApiError(
+            403,
+            "Account has been disabled."
+        );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Compare Password
-    |--------------------------------------------------------------------------
-    */
 
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-        throw new ApiError(401, "Invalid email or password.");
+        throw new ApiError(
+            401,
+            "Invalid email or password."
+        );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Update Last Login
-    |--------------------------------------------------------------------------
-    */
 
     user.lastLogin = new Date();
 
     await user.save();
 
-    /*
-    |--------------------------------------------------------------------------
-    | Generate Token
-    |--------------------------------------------------------------------------
-    */
-
     const token = generateAccessToken(user);
 
     return {
-        user,
+        user: {
+            id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            restaurantId: user.restaurantId,
+            profileImage: user.profileImage,
+            preferredLanguage: user.preferredLanguage,
+            isActive: user.isActive,
+        },
         token,
     };
 
+    // return {
+    //     user,
+    //     token,
+    // };
 };
+
+// const login = async (email, password) => {
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Find User
+//     |--------------------------------------------------------------------------
+//     */
+
+//     const user = await User.findOne({
+//         email,
+//         isDeleted: false,
+//     }).select("+password");
+
+//     if (!user) {
+//         throw new ApiError(401, "Invalid email or password.");
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Check Active
+//     |--------------------------------------------------------------------------
+//     */
+
+//     if (!user.isActive) {
+//         throw new ApiError(403, "Account has been disabled.");
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Compare Password
+//     |--------------------------------------------------------------------------
+//     */
+
+//     const isMatch = await user.comparePassword(password);
+
+//     if (!isMatch) {
+//         throw new ApiError(401, "Invalid email or password.");
+//     }
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Update Last Login
+//     |--------------------------------------------------------------------------
+//     */
+
+//     user.lastLogin = new Date();
+
+//     await user.save();
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Generate Token
+//     |--------------------------------------------------------------------------
+//     */
+
+//     const token = generateAccessToken(user);
+
+//     return {
+//         user,
+//         token,
+//     };
+
+// };
 
 /*
 |--------------------------------------------------------------------------

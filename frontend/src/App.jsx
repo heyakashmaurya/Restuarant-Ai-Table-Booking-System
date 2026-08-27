@@ -1,11 +1,8 @@
-import React from 'react'
 
-const App = () => {
-  return (
-    <div>
-      server is running on platform. 
-    </div>
-  )
+import AppRoutes from "./app/routes";
+
+function App() {
+    return <AppRoutes />;
 }
 
-export default App
+export default App;

@@ -24,6 +24,7 @@ export const createBooking = async ({
     specialRequest = "",
     occasion = "",
     notes = "",
+    bookingSource,
 }) => {
 
     try {
@@ -62,7 +63,7 @@ export const createBooking = async ({
 
         const customer = await findOrCreateCustomer({
 
-            name,
+            fullName:name,
 
             phone,
 

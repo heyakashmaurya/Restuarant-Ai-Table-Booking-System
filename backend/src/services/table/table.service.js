@@ -98,6 +98,45 @@ export const getTableById = async (tableId) => {
 | Update Table
 |--------------------------------------------------------------------------
 */
+// export const updateTable = async (
+//     tableId,
+//     updateData
+// ) => {
+
+//     const table = await Table.findOne({
+//         _id: tableId,
+//         isDeleted: false,
+//     });
+
+//     if (!table) {
+//         throw new AppError(
+//             "Table not found.",
+//             404
+//         );
+//     }
+
+//     const allowedFields = [
+//         "tableName",
+//         "capacity",
+//         "location",
+//         "floor",
+//         "status",
+//         "isActive",
+//         "isMergeable",
+//         "mergedWith",
+//         "notes",
+//     ];
+
+//     allowedFields.forEach((field) => {
+//         if (updateData[field] !== undefined) {
+//             table[field] = updateData[field];
+//         }
+//     });
+
+//     await table.save();
+
+//     return table;
+// };
 
 export const updateTable = async (
     tableId,
@@ -229,6 +268,7 @@ export const deleteTable = async (
 | Update Table Status
 |--------------------------------------------------------------------------
 */
+
 
 export const updateTableStatus = async (
     tableId,

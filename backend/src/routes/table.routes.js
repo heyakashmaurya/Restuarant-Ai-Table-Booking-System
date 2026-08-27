@@ -17,13 +17,13 @@ const router = express.Router();
 router.use(auth);
 
 router.post(
-    "/",
+    "/create",
     authorize("Owner", "Manager"),
     createTable
 );
 
 router.get(
-    "/",
+    "/gettable",
     authorize("Owner", "Manager", "Staff"),
     getTables
 );

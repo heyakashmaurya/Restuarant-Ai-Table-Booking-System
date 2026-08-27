@@ -1,40 +1,189 @@
-// import express from "express";
 
-// import {
-//   createBooking,
-//   getBookings,
-//   updateBooking,
-//   deleteBooking
-// } from "../controllers/booking.controller.js";
 
-// import {
-//   protect,
-//   authorize
-// } from "../middleware/auth.js";
+import express from "express";
 
-// const router = express.Router();
+import {
+    createBookingController,
+    listBookingsController,
+    getBookingController,
+    checkBookingAvailabilityController,
+    updateBookingController,
+    cancelBookingController,
+} from "../controllers/booking.controller.js";
 
-// router.get("/", protect, getBookings);
+import protect  from "../middleware/auth.js";
+// import { authorize } from "../middleware/authorize.js";
+import authorize from "../middleware/authorize.js";
 
-// router.post(
-//   "/create",
-//   protect,
-//   authorize("admin", "staff"),
-//   createBooking
-// );
+const router = express.Router();
 
-// router.put(
-//   "/:id",
-//   protect,
-//   authorize("admin", "staff"),
-//   updateBooking
-// );
+/*
+|--------------------------------------------------------------------------
+| Booking Routes
+|--------------------------------------------------------------------------
+|
+| Dashboard / Admin booking API.
+|
+| Architecture:
+|
+| Frontend
+|    ↓
+| Route
+|    ↓
+| Controller
+|    ↓
+| Booking Service
+|    ↓
+| MongoDB
+|
+|--------------------------------------------------------------------------
+*/
 
-// router.delete(
-//   "/:id",
-//   protect,
-//   authorize("admin", "staff"),
-//   deleteBooking
-// );
 
-// export default router;
+/*
+|--------------------------------------------------------------------------
+| All Booking Routes Require Authentication
+|--------------------------------------------------------------------------
+*/
+
+router.use(protect);
+
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/bookings
+|--------------------------------------------------------------------------
+|
+| List bookings with filters and pagination.
+|
+| Supported query parameters:
+|
+| ?bookingDate=2026-08-22
+| ?status=confirmed
+| ?bookingSource=dashboard
+| ?paymentStatus=paid
+| ?customer=<customerId>
+| ?page=1
+| ?limit=20
+|
+*/
+
+router.get(
+    "/",
+    authorize("Owner", "Manager", "Staff"),
+    listBookingsController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/bookings/availability
+|--------------------------------------------------------------------------
+|
+| Check whether a table is available before creating/updating
+| a booking.
+|
+| Body:
+|
+| {
+|     "bookingDate": "2026-08-22",
+|     "startTime": "19:00",
+|     "guestCount": 4
+| }
+|
+*/
+
+router.post(
+    "/availability",
+    authorize("Owner", "Manager", "Staff"),
+    checkBookingAvailabilityController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/bookings
+|--------------------------------------------------------------------------
+|
+| Create a new manual/dashboard booking.
+|
+*/
+
+router.post(
+    "/create",
+    authorize("Owner", "Manager", "Staff"),
+    createBookingController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/bookings/:bookingId
+|--------------------------------------------------------------------------
+|
+| Get a single booking.
+|
+*/
+
+router.get(
+    "/:bookingId",
+    authorize("Owner", "Manager", "Staff"),
+    getBookingController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| PATCH /api/bookings/:bookingId
+|--------------------------------------------------------------------------
+|
+| Update booking details.
+|
+| Example:
+|
+| {
+|     "bookingDate": "2026-08-23",
+|     "startTime": "20:00",
+|     "guestCount": 5,
+|     "specialRequest": "Window seat"
+| }
+|
+*/
+
+router.patch(
+    "/:bookingId",
+    authorize("Owner", "Manager", "Staff"),
+    updateBookingController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| PATCH /api/bookings/:bookingId/cancel
+|--------------------------------------------------------------------------
+|
+| Cancel a booking.
+|
+| Body:
+|
+| {
+|     "reason": "Customer requested cancellation"
+| }
+|
+*/
+
+router.patch(
+    "/:bookingId/cancel",
+    authorize("Owner", "Manager", "Staff"),
+    cancelBookingController
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Export
+|--------------------------------------------------------------------------
+*/
+
+export default router;
+
