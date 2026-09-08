@@ -263,7 +263,7 @@ const getCustomerName = (
 ) => {
 
     return (
-        booking?.name ||
+        // booking?.name ||
         booking?.customer?.fullName ||
         "Unknown customer"
     );
